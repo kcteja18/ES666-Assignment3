@@ -54,63 +54,36 @@ class PanaromaStitcher():
         keypoints, descriptors = sift.detectAndCompute(gray, None)
         return keypoints, descriptors
 
-    def match_features(self, des1, des2):
-        """ Match descriptors using FLANN based matcher """
-        index_params = dict(algorithm=1, trees=5)  # Using KD-Tree
-        search_params = dict(checks=50)  # or any other value
-        flann = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(des1, des2, k=2)
+    def match_features(self, img1_features, img2_features):
+        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
+        best_matches = bf.match(img1_features,img2_features)
 
-        # Ratio test as per Lowe's paper
-        good_matches = []
-        for m, n in matches:
-            if m.distance < 0.75 * n.distance:
-                good_matches.append(m)
+        matches = sorted(best_matches, key = lambda x:x.distance)
 
-        return good_matches
+        return matches
 
-    def find_homography(self, kp1, kp2, matches):
+    def find_homography(self, kps1, kps2, matches):
         """ Find homography using RANSAC """
+        kps1 = np.float32([keypoint.pt for keypoint in kps1])
+        kps2 = np.float32([keypoint.pt for keypoint in kps2])
         if len(matches) > 4:
-            src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-            dst_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+            src_pts = np.float32([kps1[m.queryIdx].pt for m in matches])
+            dst_pts = np.float32([kps2[m.trainIdx].pt for m in matches])
 
-            H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+            H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4.0)
             return H
         else:
             return None
 
     def warp_and_blend(self, img1, img2, H):
         """ Warp img2 to img1 using the homography matrix H, and blend them """
-        # Get dimensions of both images
-        h1, w1 = img1.shape[:2]
-        h2, w2 = img2.shape[:2]
+        width = img2.shape[1] + img1.shape[1]
+        print("width ", width) 
 
-        # Get the canvas size for the panorama (considering both images)
-        pts_img2 = np.float32([[0, 0], [0, h2], [w2, h2], [w2, 0]]).reshape(-1, 1, 2)
-        pts_img2_transformed = cv2.perspectiveTransform(pts_img2, H)
+        height = max(img2.shape[0], img1.shape[0])
 
-        pts_img1 = np.float32([[0, 0], [0, h1], [w1, h1], [w1, 0]]).reshape(-1, 1, 2)
-        pts = np.concatenate((pts_img1, pts_img2_transformed), axis=0)
+        panorama = cv2.warpPerspective(img1, img2,  (width, height))
 
-        # Get the bounding box for the panorama
-        [xmin, ymin] = np.int32(pts.min(axis=0).ravel() - 0.5)
-        [xmax, ymax] = np.int32(pts.max(axis=0).ravel() + 0.5)
-
-        # Compute the translation homography to align the images
-        translation = np.array([[1, 0, -xmin],
-                                [0, 1, -ymin],
-                                [0, 0, 1]])
-
-        # Warp the second image
-        warped_img2 = cv2.warpPerspective(img2, translation @ H, (xmax - xmin, ymax - ymin))
-
-        # Place the first image on the canvas
-        panorama = np.zeros((ymax - ymin, xmax - xmin, 3), dtype=np.uint8)
-        panorama[-ymin:h1 - ymin, -xmin:w1 - xmin] = img1
-
-        # Blend the warped image with the first one
-        mask = (warped_img2 > 0).astype(np.uint8)
-        panorama = cv2.addWeighted(panorama, 1.0, warped_img2, 0.5, 0)
+        panorama[0:img2.shape[0], 0:img2.shape[1]] = img2
 
         return panorama
