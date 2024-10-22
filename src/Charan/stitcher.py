@@ -73,6 +73,10 @@ class PanaromaStitcher():
             H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4.0)
             if H is not None:
                 H = H.astype(np.float32)
+                print("Homography Matrix:\n", H)  # Debug print
+                print("Homography Shape:", H.shape)  # Debug print
+            else:
+                print("Homography could not be computed.")
             return H
         else:
             return None
