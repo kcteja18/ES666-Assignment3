@@ -83,13 +83,41 @@ class PanaromaStitcher():
 
     def warp_and_blend(self, img1, img2, H):
         """ Warp img2 to img1 using the homography matrix H, and blend them """
-        width = img2.shape[1] + img1.shape[1]
-        # print("width ", width) 
+        # width = img2.shape[1] + img1.shape[1]
+        # # print("width ", width) 
 
-        height = max(img2.shape[0], img1.shape[0])
+        # height = max(img2.shape[0], img1.shape[0])
 
-        panorama = cv2.warpPerspective(img1, H,  (width, height))
+        # panorama = cv2.warpPerspective(img1, H,  (width, height))
 
-        panorama[0:img2.shape[0], 0:img2.shape[1]] = img2
+        # panorama[0:img2.shape[0], 0:img2.shape[1]] = img2
 
-        return panorama
+        # return panorama
+        # Get the size of both images
+        height1, width1 = img1.shape[:2]
+        height2, width2 = img2.shape[:2]
+
+        # Determine the size of the output panorama
+        corners = np.array([[0, 0], [width1, 0], [0, height1], [width2, height2]], dtype='float32')
+        warped_corners = cv2.perspectiveTransform(corners, H)
+
+        all_corners = np.concatenate((corners, warped_corners), axis=0)
+        [x_min, y_min] = np.int32(all_corners.min(axis=0))
+        [x_max, y_max] = np.int32(all_corners.max(axis=0))
+
+        # Translation matrix
+        translate_dist = [-x_min, -y_min]
+        translation_matrix = np.array([[1, 0, translate_dist[0]], [0, 1, translate_dist[1]], [0, 0, 1]])
+
+        # Warp the images
+        panorama1 = cv2.warpPerspective(img1, translation_matrix @ H, (x_max - x_min, y_max - y_min))
+        panorama2 = cv2.warpAffine(img2, np.eye(2, 3), (x_max - x_min, y_max - y_min))
+
+        # Blend images
+        panorama1[translate_dist[1]:height1 + translate_dist[1], translate_dist[0]:width1 + translate_dist[0]] = img1
+        panorama2[translate_dist[1]:height2 + translate_dist[1], translate_dist[0]:width2 + translate_dist[0]] = img2
+        
+        # Average blending
+        blended = cv2.addWeighted(panorama1, 0.5, panorama2, 0.5, 0)
+
+        return blended
