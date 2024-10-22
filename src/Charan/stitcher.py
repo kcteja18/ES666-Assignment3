@@ -82,7 +82,7 @@ class PanaromaStitcher():
 
         height = max(img2.shape[0], img1.shape[0])
 
-        panorama = cv2.warpPerspective(img1, img2,  (width, height))
+        panorama = cv2.warpPerspective(img1, H,  (width, height))
 
         panorama[0:img2.shape[0], 0:img2.shape[1]] = img2
 
