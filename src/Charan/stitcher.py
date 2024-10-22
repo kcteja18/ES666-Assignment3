@@ -78,7 +78,7 @@ class PanaromaStitcher():
     def warp_and_blend(self, img1, img2, H):
         """ Warp img2 to img1 using the homography matrix H, and blend them """
         width = img2.shape[1] + img1.shape[1]
-        print("width ", width) 
+        # print("width ", width) 
 
         height = max(img2.shape[0], img1.shape[0])
 
