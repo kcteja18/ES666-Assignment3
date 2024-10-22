@@ -71,6 +71,8 @@ class PanaromaStitcher():
             dst_pts = np.float32([kps2[m.trainIdx] for m in matches])
 
             H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4.0)
+            if H is not None:
+                H = H.astype(np.float32)
             return H
         else:
             return None
