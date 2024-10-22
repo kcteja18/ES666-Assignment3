@@ -67,8 +67,8 @@ class PanaromaStitcher():
         kps1 = np.float32([keypoint.pt for keypoint in kps1])
         kps2 = np.float32([keypoint.pt for keypoint in kps2])
         if len(matches) > 4:
-            src_pts = np.float32([kps1[m.queryIdx].pt for m in matches])
-            dst_pts = np.float32([kps2[m.trainIdx].pt for m in matches])
+            src_pts = np.float32([kps1[m.queryIdx] for m in matches])
+            dst_pts = np.float32([kps2[m.trainIdx] for m in matches])
 
             H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4.0)
             return H
