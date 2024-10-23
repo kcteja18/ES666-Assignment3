@@ -55,10 +55,18 @@ class PanaromaStitcher():
         return keypoints, descriptors
 
     def match_features(self, img1_features, img2_features):
-        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
-        best_matches = bf.match(img1_features,img2_features)
+        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+        best_matches = bf.knnMatch(img1_features,img2_features)
 
-        matches = sorted(best_matches, key = lambda x:x.distance)
+        # matches = sorted(best_matches, key = lambda x:x.distance)
+        matches = []
+
+        # loop over the raw matches
+        for m,n in matches:
+            # ensure the distance is within a certain ratio of each
+            # other (i.e. Lowe's ratio test)
+            if m.distance < n.distance * 0.75:
+                matches.append(m)
 
         return matches
 
