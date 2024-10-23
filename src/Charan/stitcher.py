@@ -78,7 +78,7 @@ class PanaromaStitcher():
             src_pts = np.float32([kps1[m.queryIdx] for m in matches])
             dst_pts = np.float32([kps2[m.trainIdx] for m in matches])
 
-            H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4.0)
+            H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 7)
             if H is not None:
                 H = H.astype(np.float32)
                 print("Homography Matrix:\n", H)  # Debug print
@@ -105,28 +105,44 @@ class PanaromaStitcher():
         height1, width1 = img1.shape[:2]
         height2, width2 = img2.shape[:2]
 
-        # Determine the corners of both images
-        corners = np.array([[0, 0], [width1, 0], [0, height1], [width2, height2]], dtype='float32')
-
-        # Apply the homography to the corners of the second image
-        warped_corners = cv2.perspectiveTransform(corners.reshape(-1, 1, 2), H)
+        # Determine the corners of img2
+        corners_img2 = np.array([[0, 0], [width2, 0], [0, height2], [width2, height2]], dtype='float32')
+        
+        # Apply the homography to the corners of img2
+        warped_corners = cv2.perspectiveTransform(corners_img2.reshape(-1, 1, 2), H)
 
         # Find the bounds of the panorama
-        all_corners = np.concatenate((corners, warped_corners.reshape(-1, 2)), axis=0)
+        all_corners = np.concatenate((corners_img2, warped_corners.reshape(-1, 2)), axis=0)
         [x_min, y_min] = np.int32(all_corners.min(axis=0))
         [x_max, y_max] = np.int32(all_corners.max(axis=0))
 
         # Translation matrix to shift the image to the positive quadrant
         translate_dist = [-x_min, -y_min]
         translation_matrix = np.array([[1, 0, translate_dist[0]], 
-                                        [0, 1, translate_dist[1]], 
-                                        [0, 0, 1]])
+                                    [0, 1, translate_dist[1]], 
+                                    [0, 0, 1]])
 
-        # Warp the images using the translation matrix
-        panorama1 = cv2.warpPerspective(img1, translation_matrix @ H, (x_max - x_min, y_max - y_min))
-        panorama2 = cv2.warpAffine(img2, np.eye(2, 3), (x_max - x_min, y_max - y_min))
+        # Warp img1 and img2 using the homography and translation matrix
+        panorama1 = cv2.warpPerspective(img1, translation_matrix @ np.eye(3), (x_max - x_min, y_max - y_min))
+        panorama2 = cv2.warpPerspective(img2, translation_matrix @ H, (x_max - x_min, y_max - y_min))
 
-        # Blending images
-        blended = cv2.addWeighted(panorama1, 0.5, panorama2, 0.5, 0)
+        # Create a mask to indicate valid pixels (non-zero) in panorama2
+        mask1 = np.zeros_like(panorama1, dtype=np.uint8)
+        mask1[panorama1 > 0] = 1
+        
+        mask2 = np.zeros_like(panorama2, dtype=np.uint8)
+        mask2[panorama2 > 0] = 1
+
+        # Find the overlapping region (where both masks are non-zero)
+        overlap_mask = cv2.bitwise_and(mask1, mask2)
+
+        # Feathering to blend overlapping regions
+        non_overlap = cv2.bitwise_and(panorama1, cv2.bitwise_not(overlap_mask)) + cv2.bitwise_and(panorama2, cv2.bitwise_not(overlap_mask))
+
+        # Use feathering on overlapping regions
+        feathered_blend = cv2.addWeighted(panorama1, 0.5, panorama2, 0.5, 0)
+
+        # Combine the feathered overlap with the non-overlapping regions
+        blended = cv2.add(non_overlap, cv2.bitwise_and(feathered_blend, overlap_mask))
 
         return blended
