@@ -55,7 +55,7 @@ class PanaromaStitcher():
         return keypoints, descriptors
 
     def match_features(self, img1_features, img2_features):
-        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
         best_matches = bf.knnMatch(img1_features,img2_features,k=3)
 
         # matches = sorted(best_matches, key = lambda x:x.distance)
