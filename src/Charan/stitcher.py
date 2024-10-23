@@ -56,13 +56,13 @@ class PanaromaStitcher():
 
     def match_features(self, img1_features, img2_features):
         bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        best_matches = bf.knnMatch(img1_features,img2_features)
+        best_matches = bf.knnMatch(img1_features,img2_features,k=3)
 
         # matches = sorted(best_matches, key = lambda x:x.distance)
         matches = []
 
         # loop over the raw matches
-        for m,n in matches:
+        for m,n in best_matches:
             # ensure the distance is within a certain ratio of each
             # other (i.e. Lowe's ratio test)
             if m.distance < n.distance * 0.75:
