@@ -55,18 +55,21 @@ class PanaromaStitcher():
         return keypoints, descriptors
 
     def match_features(self, img1_features, img2_features):
-        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        best_matches = bf.knnMatch(img1_features,img2_features,k=2)
+        bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
+        matches = bf.match(img1_features, img2_features)
+        matches = sorted(matches, key=lambda x: x.distance)
+        return matches
+        # best_matches = bf.knnMatch(img1_features,img2_features,k=2)
 
-        # matches = sorted(best_matches, key = lambda x:x.distance)
-        matches = []
+        # # matches = sorted(best_matches, key = lambda x:x.distance)
+        # matches = []
 
-        # loop over the raw matches
-        for m,n in best_matches:
-            # ensure the distance is within a certain ratio of each
-            # other (i.e. Lowe's ratio test)
-            if m.distance < n.distance * 0.75:
-                matches.append(m)
+        # # loop over the raw matches
+        # for m,n in best_matches:
+        #     # ensure the distance is within a certain ratio of each
+        #     # other (i.e. Lowe's ratio test)
+        #     if m.distance < n.distance * 0.75:
+        #         matches.append(m)
 
         return matches
 
@@ -74,11 +77,11 @@ class PanaromaStitcher():
         """ Find homography using RANSAC """
         kps1 = np.float32([keypoint.pt for keypoint in kps1])
         kps2 = np.float32([keypoint.pt for keypoint in kps2])
-        if len(matches) > 4:
+        if len(matches) > 5:
             src_pts = np.float32([kps1[m.queryIdx] for m in matches])
             dst_pts = np.float32([kps2[m.trainIdx] for m in matches])
 
-            H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 4)
+            H, _ = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5)
             if H is not None:
                 H = H.astype(np.float32)
                 print("Homography Matrix:\n", H)  # Debug print
