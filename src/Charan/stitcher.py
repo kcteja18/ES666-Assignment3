@@ -183,7 +183,7 @@ class PanaromaStitcher():
 )
         return homographies_list
 
-    def accumulate_homographies(self, homographies_list, target_index):
+    def accumulate_homographies(self, homographies_list, target_index=1):
         """Compute total homographies relative to a target image"""
         accumulated_homographies = []
         identity_matrix = np.eye(3) 
@@ -204,16 +204,35 @@ class PanaromaStitcher():
 
         return accumulated_homographies
 
-    def make_panaroma_for_images_in(self, img_list, homographies_list, target_index):
-        """Warp images to align with the target image and create a panorama"""
+    def make_panoroma_for_images_in(self, path):
+        """Read images from the path, use precomputed homographies, and create a panorama"""
         
-        total_width = sum([img.shape[1] for img in img_list])
-        total_height = max([img.shape[0] for img in img_list])
-        translation_matrix = np.array([[1, 0, total_width // 4], [0, 1, total_height // 4], [0, 0, 1]], dtype=np.float32)
-        panorama_img = np.zeros((total_height, total_width, 3), dtype=np.uint8)
-        for idx, homography in enumerate(homographies_list):
-            translated_homography = np.dot(translation_matrix, homography)
-            warped_img = cv2.warpPerspective(img_list[idx], translated_homography, (total_width, total_height))
-            panorama_img = np.maximum(panorama_img, warped_img) 
+        # Read all images from the specified path
+        all_images = sorted(glob.glob(path + os.sep + '*'))
+        print(f'Found {len(all_images)} Images for stitching')
 
-        return panorama_img, homographies_list
+        images = [cv2.imread(img_path) for img_path in all_images]
+        
+        if not images or len(images) < 2:
+            print("Not enough images to stitch.")
+            return None, []
+
+        # Assume homographies are precomputed outside of this function
+        pair_wise_homographies = self.calculate_homographies(images)  # This line calls an existing method to compute homographies.
+        homographies = self.accumulate_homographies(pair_wise_homographies)
+        # Final stitching to align all images
+        total_width = sum([img.shape[1] for img in images])
+        total_height = max([img.shape[0] for img in images])
+        
+        # Create a translation matrix to center the panorama
+        translation_matrix = np.array([[1, 0, total_width // 4], [0, 1, total_height // 4], [0, 0, 1]], dtype=np.float32)
+
+        panorama_img = np.zeros((total_height, total_width, 3), dtype=np.uint8)
+        
+        # Apply homographies and stitch images onto the panorama canvas
+        for idx, homography in enumerate(homographies):
+            translated_homography = np.dot(translation_matrix, homography)
+            warped_img = cv2.warpPerspective(images[idx], translated_homography, (total_width, total_height))
+            panorama_img = np.maximum(panorama_img, warped_img)
+
+        return panorama_img, homographies
