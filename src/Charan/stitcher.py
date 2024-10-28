@@ -28,8 +28,8 @@ class PanaromaStitcher():
         pair_wise_homographies = self.calculate_homographies(images)
         total_homographies = self.accumulate_homographies(pair_wise_homographies)
         
-        total_width = sum([img.shape[1] for img in images])
-        total_height = 2*max([img.shape[0] for img in images])
+        total_width = 1.5*sum([img.shape[1] for img in images])
+        total_height = 3*max([img.shape[0] for img in images])
         translation_matrix = np.array([[1, 0, total_width // 4], [0, 1, total_height // 4], [0, 0, 1]], dtype=np.float32)
         stitched_img = np.zeros((total_height, total_width, 3), dtype=np.uint8)
         
