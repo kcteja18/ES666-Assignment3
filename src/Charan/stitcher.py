@@ -154,7 +154,7 @@ class PanaromaStitcher():
         self.sift_detector = cv2.SIFT_create()
         self.bf_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
         
-    def make_panoroma_for_images_in(self, path):
+    def make_panaroma_for_images_in(self, path):
         """Read images from the path, use precomputed homographies, and create a panorama"""
         
         # Read all images from the specified path
