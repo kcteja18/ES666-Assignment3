@@ -29,7 +29,7 @@ class PanaromaStitcher():
         total_homographies = self.accumulate_homographies(pair_wise_homographies)
         
         total_width = sum([img.shape[1] for img in images])
-        total_height = max([img.shape[0] for img in images])
+        total_height = 2*max([img.shape[0] for img in images])
         translation_matrix = np.array([[1, 0, total_width // 4], [0, 1, total_height // 4], [0, 0, 1]], dtype=np.float32)
         stitched_img = np.zeros((total_height, total_width, 3), dtype=np.uint8)
         
@@ -48,7 +48,7 @@ class PanaromaStitcher():
         return keypoints, descriptors
 
     def find_homography(self, image1, image2):
-        """ Find homography matrix using RANSAC with 5 point correspondences"""
+        """ Find homography matrix using RANSAC with 9 point correspondences"""
         keypoints1, descriptors1 = self.extract_keypoints_and_descriptors(image1)
         keypoints2, descriptors2 = self.extract_keypoints_and_descriptors(image2)
 
@@ -58,7 +58,7 @@ class PanaromaStitcher():
         points1 = np.float32([keypoints1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
         points2 = np.float32([keypoints2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
 
-        homography_matrix, _ = cv2.findHomography(points1, points2, cv2.RANSAC, 7.0)
+        homography_matrix, _ = cv2.findHomography(points1, points2, cv2.RANSAC, 9.0)
         return homography_matrix
 
     def calculate_homographies(self, img_list):
