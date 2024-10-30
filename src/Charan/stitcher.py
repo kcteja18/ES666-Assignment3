@@ -88,20 +88,34 @@ class PanaromaStitcher():
         """Find pairwise homographies between consecutive images and accumulate them"""
         homographies_list = [np.eye(3)]  # First image has identity homography
         target_index = len(img_list)//2  # The middle image is the target
-        
+
         for i in range(len(img_list) - 1):
             keypoints1, descriptors1 = self.extract_keypoints_and_descriptors(img_list[i])
             keypoints2, descriptors2 = self.extract_keypoints_and_descriptors(img_list[i + 1])
 
+            if descriptors1 is None or descriptors2 is None:
+                print(f"Insufficient keypoints detected in images {i} or {i + 1}. Skipping pair.")
+                continue
+
             matches = self.bf_matcher.match(descriptors1, descriptors2)
             matches = sorted(matches, key=lambda x: x.distance)
 
-            points1 = np.float32([keypoints1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-            points2 = np.float32([keypoints2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+            if len(matches) < 4:
+                print(f"Not enough matches between images {i} and {i + 1}. Skipping pair.")
+                continue
+
+            points1 = np.float32([keypoints1[m.queryIdx].pt for m in matches]).reshape(-1, 2)
+            points2 = np.float32([keypoints2[m.trainIdx].pt for m in matches]).reshape(-1, 2)
 
             homography_matrix, _ = self.ransac_homography(points1, points2)
-            homographies_list.append(homography_matrix)
+            if homography_matrix is not None:
+                homographies_list.append(homography_matrix)
+            else:
+                print(f"Could not compute homography between images {i} and {i + 1}. Skipping pair.")
+                homographies_list.append(np.eye(3))  # Add identity as a fallback
+
         return self.accumulate_homographies(homographies_list, target_index)
+
 
     def accumulate_homographies(self, homographies_list, target_index):
         """Compute total homographies relative to a target image"""
