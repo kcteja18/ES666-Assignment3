@@ -110,8 +110,8 @@ class PanaromaStitcher():
 
         total_homographies = self.calculate_homographies(images)
         
-        total_width = sum([img.shape[1] for img in images])
-        total_height = 2 * max([img.shape[0] for img in images])
+        total_width = 2*sum([img.shape[1] for img in images])
+        total_height = 4 * max([img.shape[0] for img in images])
         translation_matrix = np.array([[1, 0, total_width // 4], [0, 1, total_height // 4], [0, 0, 1]], dtype=np.float32)
         stitched_img = np.zeros((total_height, total_width, 3), dtype=np.uint8)
         
@@ -132,7 +132,7 @@ class PanaromaStitcher():
     def calculate_homographies(self, img_list):
         """Find pairwise homographies between consecutive images and accumulate them"""
         homographies_list = [np.eye(3)]  # First image has identity homography
-        target_index = len(img_list) // 2  # The middle image is the target
+        target_index = 0  # The middle image is the target
         
         for i in range(len(img_list) - 1):
             keypoints1, descriptors1 = self.extract_keypoints_and_descriptors(img_list[i])
