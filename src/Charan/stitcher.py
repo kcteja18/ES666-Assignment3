@@ -28,7 +28,7 @@ class PanaromaStitcher():
     #     normalized_points = np.dot(T, np.hstack((points, np.ones((points.shape[0], 1)))).T).T
     #     return normalized_points[:, :2], T
 
-    def compute_homography(points_src, points_dst):
+    def compute_homography(self,points_src, points_dst):
         """Compute the homography matrix from four point correspondences using DLT."""
         assert points_src.shape == points_dst.shape, "Source and destination points must have the same shape."
         num_points = points_src.shape[0]
@@ -46,7 +46,7 @@ class PanaromaStitcher():
 
         return homography_matrix / (homography_matrix[2, 2] if homography_matrix[2, 2]!=0 else 1)
 
-    def apply_homography(H, points):
+    def apply_homography(self,H, points):
         """Apply homography matrix H to points."""
         points_h = np.hstack((points, np.ones((points.shape[0], 1))))
         transformed_points_h = np.dot(H, points_h.T).T
