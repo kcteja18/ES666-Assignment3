@@ -186,15 +186,25 @@ class PanaromaStitcher():
 
         total_homographies = self.calculate_homographies(images)
         
-        total_width = sum([img.shape[1] for img in images])
-        total_height =  2*max([img.shape[0] for img in images])
-        translation_matrix = np.array([[1, 0, total_width // 4], [0, 1, total_height // 4], [0, 0, 1]], dtype=np.float32)
+        # Ensure total_width and total_height are correct for the panorama canvas
+        total_width = max([img.shape[1] for img in images])  # Maximum width of images
+        total_height = sum([img.shape[0] for img in images])  # Sum of all heights
+
+        # Instead of hardcoded translation matrix, calculate a proper one for the canvas size
+        translation_matrix = np.array([[1, 0, total_width // 2], [0, 1, total_height // 2], [0, 0, 1]], dtype=np.float32)
+
+        # Create an empty canvas for the stitched panorama
         stitched_img = np.zeros((total_height, total_width, 3), dtype=np.uint8)
-        
-        # Apply homographies and stitch images onto the panorama
+
+        # Iterate over homographies and images
         for idx, homography in enumerate(total_homographies):
             translated_homography = np.dot(translation_matrix, homography)
             warped_img = self.warp_perspective(images[idx], translated_homography, (total_width, total_height))
-            stitched_img = np.maximum(stitched_img, warped_img)
+
+            # Use np.maximum to blend the images, ensuring no shape mismatch
+            if stitched_img.shape == warped_img.shape:
+                stitched_img = np.maximum(stitched_img, warped_img)
+            else:
+                print(f"Dimension mismatch for stitched_img and warped_img at index {idx}")
 
         return stitched_img, total_homographies
