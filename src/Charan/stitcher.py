@@ -57,7 +57,8 @@ class PanaromaStitcher():
         """RANSAC to compute the best homography matrix."""
         max_inliers = 0
         best_H = None
-        num_points = points_src.shape[0]
+        num_points = np.hstack((points_src, np.ones((points_src.shape[0], 1))))
+        np.random.seed(32)
 
         for _ in range(num_iterations):
             # Randomly select 4 point correspondences
@@ -69,8 +70,9 @@ class PanaromaStitcher():
             except np.linalg.LinAlgError:
                 continue
 
-            projected_dst = self.apply_homography(H, points_src)
-            distances = np.linalg.norm(projected_dst - points_dst, axis=1)
+            projected_dst = (num_points @ H.T)
+            projected_dst /= projected_dst[:, 2:3]
+            distances = np.linalg.norm(points_dst - projected_dst[:,:2], axis=1)
             inliers = distances < threshold
             num_inliers = np.sum(inliers)
             if num_inliers > max_inliers:
