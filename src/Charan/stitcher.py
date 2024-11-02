@@ -41,65 +41,55 @@ class PanaromaStitcher():
         keypoints, descriptors = self.sift_detector.detectAndCompute(gray_img, None)
         return keypoints, descriptors
     
-    def compute_homography_matrix(self,points1, points2):
+    def compute_homography_matrix(self, src_points, dst_points):
         """Compute the homography matrix using Direct Linear Transformation (DLT)."""
-        num_points = points1.shape[0]
-        A = []
+        num_points = src_points.shape[0]
+        matrix_A = []
 
         for i in range(num_points):
-            x, y = points1[i]
-            x_prime, y_prime = points2[i]
-            A.append([-x, -y, -1, 0, 0, 0, x * x_prime, y * x_prime, x_prime])
-            A.append([0, 0, 0, -x, -y, -1, x * y_prime, y * y_prime, y_prime])
+            x_src, y_src = src_points[i]
+            x_dst, y_dst = dst_points[i]
+            matrix_A.append([-x_src, -y_src, -1, 0, 0, 0, x_src * x_dst, y_src * x_dst, x_dst])
+            matrix_A.append([0, 0, 0, -x_src, -y_src, -1, x_src * y_dst, y_src * y_dst, y_dst])
 
-        A = np.array(A)
-        _, _, Vt = np.linalg.svd(A)
-        H = Vt[-1].reshape((3, 3))
-        return H / H[2, 2] if H[2, 2] != 0 else None
+        matrix_A = np.array(matrix_A)
+        _, _, V_transpose = np.linalg.svd(matrix_A)
+        homography_matrix = V_transpose[-1].reshape((3, 3))
+        return homography_matrix / homography_matrix[2, 2] if homography_matrix[2, 2] != 0 else None
 
-    # def apply_homography(self,H, points):
-    #     """Apply homography matrix H to a set of points."""
-    #     points_homogeneous = np.hstack((points, np.ones((points.shape[0], 1))))
-    #     transformed_points = (H @ points_homogeneous.T).T
-    #     transformed_points /= transformed_points[:, 2:3]  # Normalize by the last coordinate
-    #     return transformed_points[:, :2]
 
-    # def compute_reprojection_error(self,H, points1, points2):
-    #     """Compute reprojection error given the homography matrix."""
-    #     projected_points2 = self.apply_homography(H, points1)
-    #     return np.linalg.norm(points2 - projected_points2, axis=1)
-
-    def ransac_homography(self,points1, points2, num_iterations=1000, threshold=5.0):
+    def ransac_homography(self, src_points, dst_points, num_iterations=1000, threshold=5.0):
         """Estimate homography matrix using RANSAC."""
-        best_H = None
-        max_inliers = 0
-        best_inliers_mask = None
-        pts1_h = np.hstack((points1, np.ones((points1.shape[0], 1))))
+        optimal_homography = None
+        max_inlier_count = 0
+        optimal_inliers_mask = None
+        src_points_homogeneous = np.hstack((src_points, np.ones((src_points.shape[0], 1))))
         np.random.seed(2)
 
         for _ in range(num_iterations):
-            indices = np.random.choice(len(points2), 4, replace=False)
-            subset_pts1 = points1[indices].reshape(-1, 2)  # Ensure points are (N, 2)
-            subset_pts2 = points2[indices].reshape(-1, 2)
+            selected_indices = np.random.choice(len(dst_points), 4, replace=False)
+            src_subset = src_points[selected_indices].reshape(-1, 2)
+            dst_subset = dst_points[selected_indices].reshape(-1, 2)
 
-            H = self.compute_homography_matrix(subset_pts1, subset_pts2)
+            homography_matrix = self.compute_homography_matrix(src_subset, dst_subset)
 
-            if H is None:
+            if homography_matrix is None:
                 continue
 
-            projected_pts2_h = (pts1_h @ H.T)
-            projected_pts2_h /= projected_pts2_h[:, 2:3]  # Normalize
-            distances = np.linalg.norm(points2 - projected_pts2_h[:, :2], axis=1)
+            projected_dst_points_homogeneous = (src_points_homogeneous @ homography_matrix.T)
+            projected_dst_points_homogeneous /= projected_dst_points_homogeneous[:, 2:3]  # Normalize
+            reprojection_errors = np.linalg.norm(dst_points - projected_dst_points_homogeneous[:, :2], axis=1)
 
-            inliers_mask = distances < threshold
-            num_inliers = np.sum(inliers_mask)
+            inliers_mask = reprojection_errors < threshold
+            inlier_count = np.sum(inliers_mask)
 
-            if num_inliers > max_inliers:
-                max_inliers = num_inliers
-                best_H = H
-                best_inliers_mask = inliers_mask
+            if inlier_count > max_inlier_count:
+                max_inlier_count = inlier_count
+                optimal_homography = homography_matrix
+                optimal_inliers_mask = inliers_mask
 
-        return best_H, best_inliers_mask
+        return optimal_homography, optimal_inliers_mask
+
 
     def calculate_homographies(self, img_list):
         """Find pairwise homographies between consecutive images and accumulate them"""
