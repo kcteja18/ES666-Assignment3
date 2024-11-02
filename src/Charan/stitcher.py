@@ -64,7 +64,7 @@ class PanaromaStitcher():
         max_inlier_count = 0
         optimal_inliers_mask = None
         src_points_homogeneous = np.hstack((src_points, np.ones((src_points.shape[0], 1))))
-        np.random.seed(2)
+        np.random.seed(32)
 
         for _ in range(num_iterations):
             selected_indices = np.random.choice(len(dst_points), 4, replace=False)
