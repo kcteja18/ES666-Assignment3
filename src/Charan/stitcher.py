@@ -79,8 +79,9 @@ class PanaromaStitcher():
 
         for _ in range(num_iterations):
             indices = np.random.choice(len(points2), 4, replace=False)
-            subset_pts1 = points2[indices]
-            subset_pts2 = points2[indices]
+            subset_pts1 = points1[indices].reshape(-1, 2)  # Ensure points are (N, 2)
+            subset_pts2 = points2[indices].reshape(-1, 2)
+
             H = self.compute_homography_matrix(subset_pts1, subset_pts2)
 
             if H is None:
@@ -112,8 +113,9 @@ class PanaromaStitcher():
             matches = self.bf_matcher.match(descriptors1, descriptors2)
             matches = sorted(matches, key=lambda x: x.distance)
 
-            points1 = np.float32([keypoints1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
-            points2 = np.float32([keypoints2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+            points1 = np.float32([keypoints1[m.queryIdx].pt for m in matches])
+            points2 = np.float32([keypoints2[m.trainIdx].pt for m in matches])
+
 
             homography_matrix, _ = self.ransac_homography(points1, points2)#cv2.findHomography(points1, points2, cv2.RANSAC, 9.0)
             homographies_list.append(homography_matrix / (homography_matrix[-1, -1] if homography_matrix[-1, -1] != 0 else 1))
