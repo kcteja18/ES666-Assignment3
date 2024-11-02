@@ -72,33 +72,33 @@ class PanaromaStitcher():
     def ransac_homography(self,points1, points2, num_iterations=1000, threshold=5.0):
         """Estimate homography matrix using RANSAC."""
         best_H = None
-		max_inliers = 0
-		best_inliers_mask = None
-		pts1_h = np.hstack((points1, np.ones((points1.shape[0], 1))))
-		np.random.seed(2)
+        max_inliers = 0
+        best_inliers_mask = None
+        pts1_h = np.hstack((points1, np.ones((points1.shape[0], 1))))
+        np.random.seed(2)
 
-		for _ in range(num_iterations):
-			indices = np.random.choice(len(points2), 4, replace=False)
-			subset_pts1 = points2[indices]
-			subset_pts2 = points2[indices]
-			H = self.find_homography(subset_pts1, subset_pts2)
+        for _ in range(num_iterations):
+            indices = np.random.choice(len(points2), 4, replace=False)
+            subset_pts1 = points2[indices]
+            subset_pts2 = points2[indices]
+            H = self.find_homography(subset_pts1, subset_pts2)
 
-			if H is None:
-				continue
+            if H is None:
+                continue
 
-			projected_pts2_h = (pts1_h @ H.T)
-			projected_pts2_h /= projected_pts2_h[:, 2:3]  # Normalize
-			distances = np.linalg.norm(points2 - projected_pts2_h[:, :2], axis=1)
+            projected_pts2_h = (pts1_h @ H.T)
+            projected_pts2_h /= projected_pts2_h[:, 2:3]  # Normalize
+            distances = np.linalg.norm(points2 - projected_pts2_h[:, :2], axis=1)
 
-			inliers_mask = distances < threshold
-			num_inliers = np.sum(inliers_mask)
+            inliers_mask = distances < threshold
+            num_inliers = np.sum(inliers_mask)
 
-			if num_inliers > max_inliers:
-				max_inliers = num_inliers
-				best_H = H
-				best_inliers_mask = inliers_mask
+            if num_inliers > max_inliers:
+                max_inliers = num_inliers
+                best_H = H
+                best_inliers_mask = inliers_mask
 
-		return best_H, best_inliers_mask
+        return best_H, best_inliers_mask
 
     def calculate_homographies(self, img_list):
         """Find pairwise homographies between consecutive images and accumulate them"""
