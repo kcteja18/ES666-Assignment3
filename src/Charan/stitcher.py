@@ -41,21 +41,21 @@ class PanaromaStitcher():
         keypoints, descriptors = self.sift_detector.detectAndCompute(gray_img, None)
         return keypoints, descriptors
     
-    # def compute_homography_matrix(self,points1, points2):
-    #     """Compute the homography matrix using Direct Linear Transformation (DLT)."""
-    #     num_points = points1.shape[0]
-    #     A = []
+    def compute_homography_matrix(self,points1, points2):
+        """Compute the homography matrix using Direct Linear Transformation (DLT)."""
+        num_points = points1.shape[0]
+        A = []
 
-    #     for i in range(num_points):
-    #         x, y = points1[i]
-    #         x_prime, y_prime = points2[i]
-    #         A.append([-x, -y, -1, 0, 0, 0, x * x_prime, y * x_prime, x_prime])
-    #         A.append([0, 0, 0, -x, -y, -1, x * y_prime, y * y_prime, y_prime])
+        for i in range(num_points):
+            x, y = points1[i]
+            x_prime, y_prime = points2[i]
+            A.append([-x, -y, -1, 0, 0, 0, x * x_prime, y * x_prime, x_prime])
+            A.append([0, 0, 0, -x, -y, -1, x * y_prime, y * y_prime, y_prime])
 
-    #     A = np.array(A)
-    #     _, _, Vt = np.linalg.svd(A)
-    #     H = Vt[-1].reshape((3, 3))
-    #     return H / H[2, 2]
+        A = np.array(A)
+        _, _, Vt = np.linalg.svd(A)
+        H = Vt[-1].reshape((3, 3))
+        return H / H[2, 2] if H[2, 2] != 0 else None
 
     # def apply_homography(self,H, points):
     #     """Apply homography matrix H to a set of points."""
@@ -81,7 +81,7 @@ class PanaromaStitcher():
             indices = np.random.choice(len(points2), 4, replace=False)
             subset_pts1 = points2[indices]
             subset_pts2 = points2[indices]
-            H = self.find_homography(subset_pts1, subset_pts2)
+            H = self.compute_homography_matrix(subset_pts1, subset_pts2)
 
             if H is None:
                 continue
